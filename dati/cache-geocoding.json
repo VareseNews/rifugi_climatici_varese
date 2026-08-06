@@ -1,0 +1,102 @@
+{
+ "piazzalepogliaghi|varese|borgosmariadelmontesacromonte": {
+  "lat": 45.86418,
+  "lon": 8.791918,
+  "origine": "indirizzo"
+ },
+ "piazzamotta4|varese|museoarcheologicovillamirabello": {
+  "lat": 45.815774,
+  "lon": 8.822802,
+  "origine": "indirizzo"
+ },
+ "piazzaunitaditalia3|saronno|parcoderocchi": {
+  "lat": 45.629013,
+  "lon": 9.036138,
+  "origine": "indirizzo"
+ },
+ "viaalbelvedere17|varese|parcocampodeifiori": {
+  "lat": 45.868717,
+  "lon": 8.7785,
+  "origine": "indirizzo"
+ },
+ "viacarloporta11|saronno|parcosalvodacquisto": {
+  "lat": 45.629355,
+  "lon": 9.028552,
+  "origine": "indirizzo"
+ },
+ "viacoladirienzo40|varese|museocastellodimasnago": {
+  "lat": 45.829422,
+  "lon": 8.801009,
+  "origine": "indirizzo"
+ },
+ "viadeiprati|varese|parcozanziallaschiranna": {
+  "lat": 45.802195,
+  "lon": 8.784753,
+  "origine": "indirizzo"
+ },
+ "viademagri1|gallarate|bibliotecacivicamuseomaga": {
+  "lat": 45.654282,
+  "lon": 8.797885,
+  "origine": "indirizzo"
+ },
+ "viadonvittoriovolpi|saronno|parcodellura": {
+  "lat": 45.634372,
+  "lon": 9.040135,
+  "origine": "indirizzo"
+ },
+ "viafiume38|varese|villamylius": {
+  "lat": 45.824264,
+  "lon": 8.821226,
+  "origine": "indirizzo"
+ },
+ "viafrancescocaracciolo46|varese|villabaragiola": {
+  "lat": 45.831212,
+  "lon": 8.797018,
+  "origine": "indirizzo"
+ },
+ "vialecarlonoe|gallarate|parcobassetti": {
+  "lat": 45.661911,
+  "lon": 8.782726,
+  "origine": "indirizzo"
+ },
+ "vialegianbattistavico|varese|villatoeplitz": {
+  "lat": 45.844293,
+  "lon": 8.814805,
+  "origine": "nome del luogo"
+ },
+ "vialesantuario2|saronno|bibliotecacivica": {
+  "lat": 45.625928,
+  "lon": 9.026876,
+  "origine": "indirizzo"
+ },
+ "viapetrarca712713|saronno|parcocomunaleviapetrarca": {
+  "lat": 45.618998,
+  "lon": 9.049164,
+  "origine": "indirizzo"
+ },
+ "viaroma20|saronno|parcovillagianetti": {
+  "lat": 45.625825,
+  "lon": 9.039851,
+  "origine": "indirizzo"
+ },
+ "viasacco5|varese|giardiniestensi": {
+  "lat": 45.818584,
+  "lon": 8.824005,
+  "origine": "indirizzo"
+ },
+ "viasacco9|varese|bibliotecacivica": {
+  "lat": 45.818702,
+  "lon": 8.823249,
+  "origine": "indirizzo"
+ },
+ "viasangiusto6|varese|villaaugusta": {
+  "lat": 45.814114,
+  "lon": 8.83712,
+  "origine": "indirizzo"
+ },
+ "viavarese159|saronno|parcoexseminario": {
+  "lat": 45.618793,
+  "lon": 9.03043,
+  "origine": "indirizzo"
+ }
+}

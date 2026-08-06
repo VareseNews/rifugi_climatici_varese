@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rifugi climatici in provincia di Varese — VareseNews</title>
+<meta name="description" content="La mappa dei luoghi dove ripararsi dal caldo in provincia di Varese, costruita con le segnalazioni dei lettori di VareseNews.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root{
+  --rosso:#991526;
+  --grigio:#61666A;
+  --rosso-scuro:#7a1020;
+  --bordo:#e2e2e4;
+  --sfondo:#ffffff;
+  --sfondo-alt:#f6f6f7;
+  --testo:#23262a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{background:#e9eaeb}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--testo);background:var(--sfondo);
+  /* La provincia è stretta e alta: in un riquadro largo e basso resterebbe un
+     francobollo in mezzo al vuoto. Questa larghezza è anche quella tipica della
+     colonna di un articolo, cioè il contesto reale dell'iframe. */
+  max-width:820px;margin:0 auto;
+}
+
+/* ---------- testata ---------- */
+header{
+  background:var(--rosso);color:#fff;padding:16px 20px;
+}
+header h1{margin:0;font-size:20px;line-height:1.25;font-weight:700;letter-spacing:-.01em}
+header p{margin:5px 0 0;font-size:13px;line-height:1.45;opacity:.9;max-width:70ch}
+
+/* ---------- impianto: titolo, mappa, filtri ---------- */
+/* 600px non è un numero a caso: sotto i ~600 la provincia non entra più a
+   zoom 10 e Leaflet scende a 9, dove il territorio si rimpicciolisce di colpo. */
+#contenitore-mappa{position:relative;height:600px}
+#mappa{width:100%;height:100%;background:var(--sfondo-alt)}
+
+#barra{
+  display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;
+  padding:14px 20px;background:var(--sfondo-alt);border-bottom:1px solid var(--bordo);
+}
+.campo{flex:1 1 240px;min-width:0}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--grigio);margin-bottom:5px}
+select{
+  width:100%;padding:10px;font-size:15px;font-family:inherit;color:var(--testo);
+  border:1px solid var(--bordo);border-radius:6px;background:#fff;
+}
+select:focus{outline:2px solid var(--rosso);outline-offset:1px}
+
+#conteggio{padding:10px 20px;font-size:12px;color:var(--grigio);border-bottom:1px solid var(--bordo)}
+#conteggio b{color:var(--rosso)}
+
+/* ---------- fumetto ---------- */
+.leaflet-popup-content{margin:12px 14px;font-size:13px;line-height:1.5;width:250px!important}
+.pop-nome{font-size:15px;font-weight:700;line-height:1.3;margin-bottom:3px;color:var(--rosso)}
+.pop-tipo{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.05em;color:#fff;background:var(--grigio);padding:2px 6px;border-radius:3px;margin-bottom:7px}
+.pop-riga{margin:4px 0;color:var(--testo)}
+.pop-riga span{color:var(--grigio)}
+.pop-azioni{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.pop-btn{
+  flex:1 1 auto;text-align:center;text-decoration:none;font-size:12px;font-weight:600;
+  padding:7px 10px;border-radius:5px;background:var(--rosso);color:#fff!important;white-space:nowrap;
+}
+.pop-btn:hover{background:var(--rosso-scuro)}
+.pop-btn.secondario{background:#fff;color:var(--grigio)!important;border:1px solid var(--bordo)}
+.pop-btn.secondario:hover{background:var(--sfondo-alt)}
+
+/* ---------- segnaposto ---------- */
+.pin{transition:transform .12s ease}
+.pin svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+.pin.evidenziato{transform:scale(1.25);z-index:1000!important}
+
+/* ---------- messaggi ---------- */
+#stato{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:22px;z-index:900;
+  background:var(--testo);color:#fff;font-size:13px;padding:9px 16px;border-radius:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .3s;
+  max-width:90%;text-align:center;
+}
+#stato.visibile{opacity:.95}
+#avviso{
+  padding:9px 20px;font-size:12px;line-height:1.45;background:#fdf6e3;
+  border-bottom:1px solid #ecdca8;color:#6b5310;display:none
+}
+#avviso.visibile{display:block}
+footer{
+  padding:10px 20px;font-size:11px;color:var(--grigio);
+  border-top:1px solid var(--bordo);background:var(--sfondo-alt);line-height:1.5
+}
+footer a{color:var(--grigio)}
+
+@media (max-width:700px){
+  #contenitore-mappa{height:70vh;min-height:420px}
+  .campo{flex:1 1 100%}
+  header h1{font-size:18px}
+  header p{font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dove ripararsi dal caldo in provincia di Varese</h1>
+  <p>I rifugi climatici segnalati dai lettori di VareseNews. Scegli il comune per vedere i luoghi vicino a te.</p>
+</header>
+
+<main>
+  <div id="contenitore-mappa">
+    <div id="mappa"></div>
+    <div id="stato"></div>
+  </div>
+
+  <div id="barra">
+    <div class="campo">
+      <label for="f-comune">Comune</label>
+      <select id="f-comune"><option value="">Tutta la provincia</option></select>
+    </div>
+    <div class="campo" id="campo-tipo">
+      <label for="f-tipo">Tipo di riparo</label>
+      <select id="f-tipo"><option value="">Tutti i tipi</option></select>
+    </div>
+  </div>
+
+  <div id="avviso"></div>
+  <div id="conteggio">Caricamento…</div>
+</main>
+
+<footer>
+  Segnalazioni raccolte tra i lettori e verificate dalla redazione di VareseNews.
+  Cartografia <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>,
+  confini comunali ISTAT. <span id="orario-aggiornamento"></span><br>
+  Mappa realizzata con Claude Opus 5.
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+/* ==========================================================================
+   CONFIGURAZIONE — l'unica parte da toccare
+   ========================================================================== */
+const CONFIG = {
+
+  // Dati già pronti e geolocalizzati, aggiornati ogni ora da GitHub.
+  // La pagina non parla con Google: legge solo questo file.
+  DATI_URL: "dati/rifugi.json",
+
+  // Ogni quanto la pagina ricontrolla il file (millisecondi). 1 ora.
+  INTERVALLO_AGGIORNAMENTO: 60 * 60 * 1000,
+
+  // Sfondo cartografico. Vedi README per passare a MapTiler se il traffico cresce.
+  TILE_URL: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  TILE_ATTR: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+
+  // Riquadro della provincia: coordinate fuori da qui vengono scartate.
+  BBOX: { sud: 45.50, ovest: 8.48, nord: 46.18, est: 9.13 },
+
+  // Zoom applicato quando si sceglie un comune. Il minimo garantisce che i nomi
+  // delle vie siano leggibili: sotto il 13 la mappa non serve più a orientarsi.
+  ZOOM_COMUNE_MIN: 13,
+  ZOOM_COMUNE_MAX: 14,
+  ZOOM_PROVINCIA_MAX: 13
+};
+
+/* ==========================================================================
+   Utilità
+   ========================================================================== */
+const $ = (s) => document.querySelector(s);
+
+function esc(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function messaggio(testo, durata = 4000) {
+  const el = $("#stato");
+  el.textContent = testo;
+  el.classList.add("visibile");
+  clearTimeout(messaggio._t);
+  messaggio._t = setTimeout(() => el.classList.remove("visibile"), durata);
+}
+
+function avviso(testo) {
+  const el = $("#avviso");
+  if (!testo) { el.classList.remove("visibile"); return; }
+  el.textContent = testo;
+  el.classList.add("visibile");
+}
+
+/* ==========================================================================
+   Mappa
+   ========================================================================== */
+const LIMITI_PROVINCIA = L.latLngBounds(
+  [CONFIG.BBOX.sud, CONFIG.BBOX.ovest], [CONFIG.BBOX.nord, CONFIG.BBOX.est]
+);
+
+const mappa = L.map("mappa", {
+  minZoom: 8, maxZoom: 18, scrollWheelZoom: true, maxBounds: LIMITI_PROVINCIA.pad(0.35)
+}).fitBounds(LIMITI_PROVINCIA, { animate: false });
+
+L.tileLayer(CONFIG.TILE_URL, { attribution: CONFIG.TILE_ATTR, maxZoom: 19 }).addTo(mappa);
+
+// Vela che scurisce tutto ciò che sta fuori dalla provincia, così il territorio
+// si legge come un blocco unico invece che come punti sparsi su mezza Lombardia.
+const stratoVelo = L.geoJSON(null, {
+  style: { color: "#61666A", weight: 1.2, opacity: .55, fillColor: "#f2f2f3",
+           fillOpacity: .82, interactive: false }
+}).addTo(mappa);
+
+const stratoConfini = L.geoJSON(null, {
+  style: { color: "#61666A", weight: .7, opacity: .35, fill: false, interactive: false }
+}).addTo(mappa);
+
+const stratoSelezione = L.geoJSON(null, {
+  style: { color: "#991526", weight: 2, opacity: .85, fillColor: "#991526", fillOpacity: .06, interactive: false }
+}).addTo(mappa);
+
+const stratoPunti = L.layerGroup().addTo(mappa);
+
+const ICONA = L.divIcon({
+  className: "pin",
+  html: '<svg width="24" height="32" viewBox="0 0 24 32" aria-hidden="true">' +
+        '<path d="M12 0C5.4 0 0 5.4 0 12c0 8.4 12 20 12 20s12-11.6 12-20c0-6.6-5.4-12-12-12z" fill="#991526"/>' +
+        '<circle cx="12" cy="12" r="4.5" fill="#fff"/></svg>',
+  iconSize: [24, 32], iconAnchor: [12, 32], popupAnchor: [0, -30]
+});
+
+/* ==========================================================================
+   Stato
+   ========================================================================== */
+let TUTTI = [];          // tutti i rifugi pubblicabili
+let CONFINI = null;      // GeoJSON dei 135 comuni
+let firmaDati = "";      // per capire se il foglio è cambiato
+
+function costruisciPopup(r) {
+  const gmaps = `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lon}`;
+  const indicazioni = `https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lon}`;
+  const righe = [];
+  const indirizzoCompleto = [r.indirizzo, r.comune].filter(Boolean).join(", ");
+  if (indirizzoCompleto) righe.push(`<div class="pop-riga">${esc(indirizzoCompleto)}</div>`);
+  if (r.orari)   righe.push(`<div class="pop-riga"><span>Orari:</span> ${esc(r.orari)}</div>`);
+  if (r.accesso) righe.push(`<div class="pop-riga"><span>Accesso:</span> ${esc(r.accesso)}</div>`);
+  if (r.natura)  righe.push(`<div class="pop-riga"><span>Luogo:</span> ${esc(r.natura)}</div>`);
+  if (r.servizi) righe.push(`<div class="pop-riga"><span>Servizi:</span> ${esc(r.servizi)}</div>`);
+  if (r.note)    righe.push(`<div class="pop-riga"><span>Note:</span> ${esc(r.note)}</div>`);
+
+  return `<div class="pop-nome">${esc(r.nome)}</div>` +
+         (r.tipologia ? `<div class="pop-tipo">${esc(r.tipologia)}</div>` : "") +
+         righe.join("") +
+         `<div class="pop-azioni">
+            <a class="pop-btn" href="${gmaps}" target="_blank" rel="noopener">Apri in Google Maps</a>
+            <a class="pop-btn secondario" href="${indicazioni}" target="_blank" rel="noopener">Indicazioni</a>
+          </div>`;
+}
+
+function filtrati() {
+  const comune = $("#f-comune").value;
+  const tipo = $("#f-tipo").value;
+  return TUTTI.filter(r => {
+    if (comune && r.comune !== comune) return false;
+    if (tipo && r.tipologia !== tipo) return false;
+    return true;
+  });
+}
+
+function disegna({ mantieniVista = false } = {}) {
+  const elenco = filtrati();
+  const comuneScelto = $("#f-comune").value;
+
+  stratoPunti.clearLayers();
+  stratoSelezione.clearLayers();
+
+  elenco.forEach(r => {
+    const m = L.marker([r.lat, r.lon], { icon: ICONA, title: r.nome })
+      .bindPopup(costruisciPopup(r));
+    m.addTo(stratoPunti);
+    r._marker = m;
+  });
+
+  // confine del comune selezionato
+  if (comuneScelto && CONFINI) {
+    const f = CONFINI.features.find(f => f.properties.nome === comuneScelto);
+    if (f) stratoSelezione.addData(f);
+  }
+  stratoConfini.setStyle({ opacity: comuneScelto ? .15 : .35 });
+
+  if (!mantieniVista) inquadra(elenco, comuneScelto);
+
+  aggiornaConteggio(elenco.length);
+}
+
+/**
+ * Sposta la mappa in un solo movimento, senza animazione.
+ * Lo zoom viene calcolato prima e applicato con una sola setView. L'animazione
+ * e' disattivata di proposito: su alcuni motori di rendering la transizione di
+ * zoom non arriva mai a termine e la mappa resta inchiodata allo zoom precedente.
+ * Lo zoom manuale del lettore (rotellina, pizzico, pulsanti + e -) non e' toccato.
+ */
+function inquadra(elenco, comuneScelto, tentativo = 0) {
+  mappa.invalidateSize({ animate: false });
+
+  // Se il riquadro non ha ancora un'altezza vera — capita dentro un iframe che si
+  // sta ancora dimensionando — Leaflet calcola uno zoom assurdo (18) e la mappa
+  // parte stretta su Varese invece che sulla provincia. Meglio aspettare un frame.
+  const dim = mappa.getSize();
+  if ((dim.y < 100 || dim.x < 100) && tentativo < 30) {
+    requestAnimationFrame(() => inquadra(elenco, comuneScelto, tentativo + 1));
+    return;
+  }
+
+  let confine = null, minimo, massimo, margine;
+
+  if (comuneScelto) {
+    // sul comune contano i luoghi segnalati: si scende fino a vedere le vie
+    confine = elenco.length
+      ? L.latLngBounds(elenco.map(r => [r.lat, r.lon]))
+      : (stratoSelezione.getLayers().length ? stratoSelezione.getBounds() : null);
+    minimo = CONFIG.ZOOM_COMUNE_MIN;
+    massimo = CONFIG.ZOOM_COMUNE_MAX;
+    margine = 60;
+  } else {
+    // Senza filtro si inquadra sempre l'intera provincia, non i punti raccolti
+    // finora: la mappa deve restare una sola e riempirsi via via.
+    confine = stratoConfini.getLayers().length ? stratoConfini.getBounds() : LIMITI_PROVINCIA;
+    minimo = 8;
+    massimo = CONFIG.ZOOM_PROVINCIA_MAX;
+    margine = 8;   // margine stretto: con 16 la provincia non entra e si scende a zoom 9
+  }
+  if (!confine || !confine.isValid()) confine = LIMITI_PROVINCIA;
+
+  const zoom = Math.min(massimo,
+               Math.max(minimo, mappa.getBoundsZoom(confine, false, L.point(margine, margine))));
+  mappa.setView(confine.getCenter(), zoom, { animate: false });
+}
+
+function aggiornaConteggio(n) {
+  const totale = TUTTI.length;
+  const testo = n === totale
+    ? `<b>${n}</b> ${n === 1 ? "luogo segnalato" : "luoghi segnalati"}`
+    : `<b>${n}</b> di ${totale} ${totale === 1 ? "luogo" : "luoghi"}`;
+  $("#conteggio").innerHTML = testo;
+}
+
+function popolaFiltri() {
+  const comuni = [...new Set(TUTTI.map(r => r.comune).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "it"));
+  const tipi = [...new Set(TUTTI.map(r => r.tipologia).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "it"));
+
+  const conteggi = {};
+  TUTTI.forEach(r => { conteggi[r.comune] = (conteggi[r.comune] || 0) + 1; });
+
+  const selC = $("#f-comune"), precedenteC = selC.value;
+  selC.innerHTML = '<option value="">Tutta la provincia</option>' +
+    comuni.map(c => `<option value="${esc(c)}">${esc(c)} (${conteggi[c]})</option>`).join("");
+  if (comuni.includes(precedenteC)) selC.value = precedenteC;
+
+  const selT = $("#f-tipo"), precedenteT = selT.value;
+  selT.innerHTML = '<option value="">Tutti i tipi</option>' +
+    tipi.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  if (tipi.includes(precedenteT)) selT.value = precedenteT;
+  // se il foglio non ha quella colonna, il filtro sparisce invece di restare vuoto
+  $("#campo-tipo").style.display = tipi.length ? "" : "none";
+}
+
+/* ==========================================================================
+   Caricamento dati
+   ========================================================================== */
+/**
+ * Un rettangolo grande quanto il mondo, bucato dalla sagoma di ogni comune.
+ * Leaflet disegna i poligoni con regola "evenodd": ogni anello interno diventa
+ * un foro, senza bisogno di calcolare l'unione dei 135 comuni.
+ */
+function costruisciVelo(confini) {
+  const anelli = [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]];
+  confini.features.forEach(f => {
+    const poligoni = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+    poligoni.forEach(p => anelli.push(p[0]));   // solo il contorno esterno di ogni pezzo
+  });
+  return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: anelli } };
+}
+
+async function caricaConfini() {
+  try {
+    const risposta = await fetch("dati/comuni-varese.geojson");
+    if (!risposta.ok) throw new Error(risposta.status);
+    CONFINI = await risposta.json();
+    stratoVelo.addData(costruisciVelo(CONFINI));
+    stratoConfini.addData(CONFINI);
+  } catch (e) {
+    console.warn("Confini comunali non caricati:", e);
+  }
+}
+
+async function caricaRifugi({ primaVolta = false } = {}) {
+  let rifugi, esito = "";
+
+  try {
+    const risposta = await fetch(CONFIG.DATI_URL + "?cb=" + Date.now(), { cache: "no-store" });
+    if (!risposta.ok) throw new Error("HTTP " + risposta.status);
+    const dati = await risposta.json();
+    rifugi = dati.rifugi || [];
+    if (dati.in_attesa) {
+      esito = `${dati.in_attesa} ${dati.in_attesa === 1 ? "segnalazione è" : "segnalazioni sono"} in attesa di essere geolocalizzata e non compare ancora sulla mappa.`;
+    }
+  } catch (e) {
+    console.warn("Dati non caricati:", e);
+    if (!primaVolta) return;   // aggiornamento periodico fallito: teniamo ciò che è a schermo
+    $("#conteggio").textContent = "Dati non disponibili.";
+    avviso("Non è stato possibile caricare i dati della mappa.");
+    return;
+  }
+
+  const nuovaFirma = JSON.stringify(rifugi.map(r => [r.nome, r.comune, r.lat, r.lon]));
+  const cambiato = nuovaFirma !== firmaDati;
+  firmaDati = nuovaFirma;
+
+  if (!cambiato && !primaVolta) return;   // nessun dato nuovo: non ridisegniamo
+
+  const quantiPrima = TUTTI.length;
+  TUTTI = rifugi;
+  popolaFiltri();
+  disegna({ mantieniVista: !primaVolta });
+  avviso(esito);
+
+  const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  $("#orario-aggiornamento").textContent = "Ultimo aggiornamento: " + ora + ".";
+
+  if (!primaVolta && cambiato) {
+    const nuovi = TUTTI.length - quantiPrima;
+    messaggio(nuovi > 0
+      ? `Mappa aggiornata: ${nuovi} ${nuovi === 1 ? "nuovo luogo" : "nuovi luoghi"}.`
+      : "Mappa aggiornata.");
+  }
+}
+
+/* ==========================================================================
+   Avvio
+   ========================================================================== */
+["#f-comune", "#f-tipo"].forEach(s => $(s).addEventListener("change", () => disegna()));
+
+// Se l'iframe che ospita la mappa cambia larghezza, Leaflet va avvisato
+// o resta con le tessere della dimensione vecchia.
+let attesaRidimensiona;
+window.addEventListener("resize", () => {
+  clearTimeout(attesaRidimensiona);
+  attesaRidimensiona = setTimeout(() => mappa.invalidateSize({ animate: false }), 200);
+});
+
+(async function avvia() {
+  await caricaConfini();
+  await caricaRifugi({ primaVolta: true });
+
+  // ricontrollo periodico
+  setInterval(() => caricaRifugi(), CONFIG.INTERVALLO_AGGIORNAMENTO);
+
+  // e anche quando si torna sulla scheda dopo più di un'ora
+  let ultimoControllo = Date.now();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (Date.now() - ultimoControllo < CONFIG.INTERVALLO_AGGIORNAMENTO) return;
+    ultimoControllo = Date.now();
+    caricaRifugi();
+  });
+})();
+</script>
+</body>
+</html>
